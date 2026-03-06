@@ -1,9 +1,3 @@
-"""
-SourceSleuth Web UI - Streamlit Frontend
-
-A web interface for searching orphaned quotes across your academic PDFs.
-"""
-
 import os
 import tempfile
 from pathlib import Path
@@ -14,6 +8,7 @@ import pandas as pd
 
 from src.vector_store import VectorStore
 from src.pdf_processor import process_pdf_directory, extract_text_from_pdf
+from src.ocr_processor import process_ocr_pdf_directory, extract_text_from_image_file, check_easyocr_availability, check_tesseract_availability
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -85,17 +80,21 @@ def get_vector_store():
     return store
 
 
-def ingest_pdfs_ui(pdf_directory):
+def ingest_pdfs_ui(pdf_directory, use_ocr=False):
     """Ingest PDFs and return status."""
     try:
-        chunks = process_pdf_directory(pdf_directory)
+        if use_ocr:
+            chunks = process_ocr_pdf_directory(pdf_directory, force_ocr=use_ocr)
+        else:
+            chunks = process_pdf_directory(pdf_directory)
+        
         if not chunks:
             return False, "No text could be extracted from PDFs."
-        
+
         store = get_vector_store()
         added = store.add_chunks(chunks)
         store.save()
-        
+
         files_set = {c.filename for c in chunks}
         return True, f"✅ Ingested {len(files_set)} PDF(s), {added} chunks"
     except Exception as e:
@@ -124,47 +123,101 @@ with st.sidebar:
     min_score = st.slider("Minimum similarity score", min_value=0.0, max_value=1.0, value=0.3, step=0.05)
     
     st.divider()
-    
+
     # File upload section
-    st.markdown("### 📁 Upload PDFs")
-    uploaded_files = st.file_uploader(
-        "Upload academic PDFs",
+    st.markdown("### 📁 Upload Files")
+    
+    # Check OCR availability
+    ocr_available = check_easyocr_availability() or check_tesseract_availability()
+    
+    if not ocr_available:
+        st.warning("⚠️ OCR not available. Install `easyocr` or `pytesseract` for image support.")
+    
+    uploaded_pdfs = st.file_uploader(
+        "Upload PDFs",
         type=["pdf"],
         accept_multiple_files=True,
         help="Upload PDF files to add to the search index"
     )
     
-    if uploaded_files:
-        if st.button("📥 Process Uploaded PDFs"):
-            with st.spinner("Processing PDFs..."):
+    uploaded_images = st.file_uploader(
+        "Upload Images (for OCR)",
+        type=["png", "jpg", "jpeg", "bmp", "tiff", "webp"],
+        accept_multiple_files=True,
+        help="Upload image files to extract text using OCR",
+        disabled=not ocr_available
+    )
+
+    # OCR option for PDFs
+    use_ocr = False
+    if uploaded_pdfs and ocr_available:
+        use_ocr = st.checkbox(
+            "Use OCR for PDFs",
+            value=False,
+            help="Enable OCR for scanned/image-only PDFs. Slower but can extract text from images."
+        )
+
+    if uploaded_pdfs or uploaded_images:
+        if st.button("📥 Process Uploaded Files"):
+            with st.spinner("Processing files..."):
                 # Create temp directory for uploaded files
                 temp_dir = tempfile.mkdtemp()
-                saved_paths = []
-                
-                for uploaded_file in uploaded_files:
+                chunks = []
+
+                # Process PDFs
+                for uploaded_file in uploaded_pdfs:
                     save_path = Path(temp_dir) / uploaded_file.name
                     with open(save_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
-                    saved_paths.append(save_path)
-                
-                # Process uploaded PDFs
-                chunks = []
-                for pdf_path in saved_paths:
+
                     try:
-                        doc = extract_text_from_pdf(pdf_path)
-                        from src.pdf_processor import chunk_text
-                        doc_chunks = chunk_text(doc)
-                        chunks.extend(doc_chunks)
+                        if use_ocr:
+                            from src.ocr_processor import extract_text_from_image_pdf, chunk_text as ocr_chunk, OCRDocument, PageSpan
+                            doc = extract_text_from_image_pdf(save_path)
+                            doc_chunks = ocr_chunk(doc)
+                            chunks.extend(doc_chunks)
+                            st.success(f"✅ OCR processed: {uploaded_file.name}")
+                        else:
+                            doc = extract_text_from_pdf(save_path)
+                            from src.pdf_processor import chunk_text
+                            doc_chunks = chunk_text(doc)
+                            chunks.extend(doc_chunks)
                     except Exception as e:
-                        st.error(f"Failed to process {pdf_path.name}: {e}")
-                
+                        st.error(f"Failed to process {uploaded_file.name}: {e}")
+
+                # Process Images with OCR
+                if ocr_available:
+                    for uploaded_img in uploaded_images:
+                        save_path = Path(temp_dir) / uploaded_img.name
+                        with open(save_path, "wb") as f:
+                            f.write(uploaded_img.getbuffer())
+
+                        try:
+                            text, confidence = extract_text_from_image_file(save_path)
+                            if text.strip():
+                                from src.ocr_processor import OCRDocument, PageSpan, chunk_text as ocr_chunk
+                                document = OCRDocument(
+                                    filename=uploaded_img.name,
+                                    full_text=text,
+                                    page_spans=[PageSpan(page=1, start_char=0,
+                                                        end_char=len(text), confidence=confidence)],
+                                    ocr_engine="easyocr" if check_easyocr_availability() else "pytesseract",
+                                )
+                                img_chunks = ocr_chunk(document)
+                                chunks.extend(img_chunks)
+                                st.success(f"✅ OCR extracted from {uploaded_img.name} (confidence: {confidence:.2f})")
+                            else:
+                                st.warning(f"⚠️ No text found in {uploaded_img.name}")
+                        except Exception as e:
+                            st.error(f"Failed to process {uploaded_img.name}: {e}")
+
                 if chunks:
                     store = get_vector_store()
                     added = store.add_chunks(chunks)
                     store.save()
-                    st.success(f"✅ Added {added} chunks from {len(uploaded_files)} PDF(s)")
+                    st.success(f"✅ Added {added} chunks from {len(uploaded_pdfs) + len(uploaded_images)} file(s)")
                 else:
-                    st.warning("No text could be extracted from uploaded PDFs.")
+                    st.warning("No text could be extracted from uploaded files.")
     
     st.divider()
     
@@ -249,6 +302,128 @@ with col4:
         <div class="stat-label">Mode</div>
     </div>
     """, unsafe_allow_html=True)
+
+st.divider()
+
+# OCR Document Scanner Section
+st.subheader("📷 OCR Document Scanner")
+st.markdown("Scan text from images or scanned PDFs and search for citations")
+
+ocr_tab1, ocr_tab2 = st.tabs(["📄 Scan Single Document", "📚 Batch OCR Processing"])
+
+with ocr_tab1:
+    col1, col2 = st.columns(2)
+    with col1:
+        single_file = st.file_uploader(
+            "Upload image or scanned PDF",
+            type=["png", "jpg", "jpeg", "bmp", "tiff", "webp", "pdf"],
+            key="single_ocr",
+            disabled=not ocr_available
+        )
+    
+    with col2:
+        if single_file:
+            st.info(f"📄 **{single_file.name}**")
+            
+            if st.button("🔍 Scan & Search", key="scan_single"):
+                with st.spinner("Performing OCR..."):
+                    temp_dir = tempfile.mkdtemp()
+                    save_path = Path(temp_dir) / single_file.name
+                    
+                    with open(save_path, "wb") as f:
+                        f.write(single_file.getbuffer())
+                    
+                    try:
+                        if single_file.name.lower().endswith('.pdf'):
+                            from src.ocr_processor import extract_text_from_image_pdf, chunk_text as ocr_chunk
+                            doc = extract_text_from_image_pdf(save_path)
+                            text = doc.full_text
+                            chunks = ocr_chunk(doc)
+                        else:
+                            text, confidence = extract_text_from_image_file(save_path)
+                            from src.ocr_processor import OCRDocument, PageSpan, chunk_text as ocr_chunk
+                            doc = OCRDocument(
+                                filename=single_file.name,
+                                full_text=text,
+                                page_spans=[PageSpan(page=1, start_char=0, end_char=len(text), confidence=confidence)],
+                            )
+                            chunks = ocr_chunk(doc)
+                        
+                        # Add to store
+                        store = get_vector_store()
+                        added = store.add_chunks(chunks)
+                        store.save()
+                        
+                        st.success(f"✅ Extracted text and added {added} chunks")
+                        
+                        # Show extracted text
+                        with st.expander("📝 View Extracted Text"):
+                            st.text(text)
+                        
+                        # Auto-search the extracted text
+                        if text.strip():
+                            st.markdown("🔎 **Searching for related content...**")
+                            results = store.search(query=text[:500], top_k=3)
+                            if results:
+                                st.markdown("📍 **Related content found:**")
+                                for r in results:
+                                    if r['filename'] != single_file.name:
+                                        st.markdown(f"- **{r['filename']}** (p.{r['page']}, score: {r['score']:.2f})")
+                    except Exception as e:
+                        st.error(f"❌ OCR failed: {e}")
+
+with ocr_tab2:
+    st.markdown("Process multiple images or scanned PDFs at once")
+    
+    batch_files = st.file_uploader(
+        "Upload multiple files",
+        type=["png", "jpg", "jpeg", "bmp", "tiff", "webp", "pdf"],
+        accept_multiple_files=True,
+        key="batch_ocr",
+        disabled=not ocr_available
+    )
+    
+    if batch_files:
+        if st.button("🚀 Process All with OCR"):
+            with st.spinner("Processing files with OCR..."):
+                temp_dir = tempfile.mkdtemp()
+                all_chunks = []
+                
+                progress_bar = st.progress(0)
+                
+                for i, file in enumerate(batch_files):
+                    save_path = Path(temp_dir) / file.name
+                    with open(save_path, "wb") as f:
+                        f.write(file.getbuffer())
+                    
+                    try:
+                        if file.name.lower().endswith('.pdf'):
+                            from src.ocr_processor import extract_text_from_image_pdf, chunk_text as ocr_chunk
+                            doc = extract_text_from_image_pdf(save_path)
+                            chunks = ocr_chunk(doc)
+                        else:
+                            text, confidence = extract_text_from_image_file(save_path)
+                            from src.ocr_processor import OCRDocument, PageSpan, chunk_text as ocr_chunk
+                            doc = OCRDocument(
+                                filename=file.name,
+                                full_text=text,
+                                page_spans=[PageSpan(page=1, start_char=0, end_char=len(text), confidence=confidence)],
+                            )
+                            chunks = ocr_chunk(doc)
+                        
+                        all_chunks.extend(chunks)
+                    except Exception as e:
+                        st.error(f"Failed {file.name}: {e}")
+                    
+                    progress_bar.progress((i + 1) / len(batch_files))
+                
+                if all_chunks:
+                    store = get_vector_store()
+                    added = store.add_chunks(all_chunks)
+                    store.save()
+                    st.success(f"✅ Processed {len(batch_files)} files, added {added} chunks")
+                else:
+                    st.warning("No text extracted from files")
 
 st.divider()
 
