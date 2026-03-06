@@ -7,7 +7,7 @@ name = "sourcesleuth"
 version = "1.0.0"
 description = "An MCP server that helps students recover citations for orphaned quotes by performing semantic search across local academic PDFs."
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
 authors = [
     {name = "SourceSleuth Contributors"}
@@ -16,7 +16,7 @@ keywords = ["mcp", "citations", "pdf", "semantic-search", "academic"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Education",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -42,6 +42,7 @@ dev = [
 
 [project.scripts]
 sourcesleuth = "src.mcp_server:main"
+sourcesleuth-ingest = "src.ingest:main"
 
 [tool.setuptools.packages.find]
 include = ["src*"]
