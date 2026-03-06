@@ -45,6 +45,11 @@ ui = [
     "pandas>=2.0.0",
     "nltk>=3.8.0",  # WordNet-based query expansion
 ]
+ocr = [
+    "pytesseract>=0.3.10",  # Tesseract OCR wrapper
+    "pdf2image>=1.16.0",    # PDF to image conversion
+    "Pillow>=10.0.0",       # Image processing
+]
 
 [project.scripts]
 sourcesleuth = "src.mcp_server:main"

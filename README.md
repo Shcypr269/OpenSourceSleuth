@@ -48,6 +48,7 @@ Everything runs **locally on your machine** — no data leaves your hardware and
 | **Web Framework** | Streamlit | Browser-based user interface |
 | **Data Processing** | NumPy, scikit-learn | Numerical operations and preprocessing |
 | **Hybrid Search** | rank-bm25 | Optional keyword-based search |
+| **OCR** | Tesseract, pdf2image | Scanned PDF text extraction |
 | **Development** | pytest, ruff | Testing and linting |
 | **Packaging** | setuptools, pip | Distribution and dependency management |
 

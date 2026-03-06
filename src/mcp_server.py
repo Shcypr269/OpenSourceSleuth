@@ -172,18 +172,23 @@ def find_orphaned_quote(
 
 
 @mcp.tool()
-def ingest_pdfs(directory: str = "") -> str:
+def ingest_pdfs(directory: str = "", use_ocr: bool = False) -> str:
     """
     Ingest all PDF files from a directory into the local vector store.
 
     Extracts text from every PDF, splits it into 500-token chunks with
     50-token overlap, embeds each chunk using the all-MiniLM-L6-v2 model,
     and stores them in a FAISS index for fast similarity search.
+    
+    For scanned PDFs (image-only), enable OCR support to extract text
+    using Tesseract OCR.
 
     Args:
         directory: Path to the folder containing PDFs. If empty, defaults
                    to the `student_pdfs/` directory in the project root.
                    Supports both absolute and relative paths.
+        use_ocr: If True, use OCR for scanned PDFs that have no extractable
+                 text. Requires tesseract-ocr to be installed on the system.
 
     Returns:
         A summary of how many PDFs and chunks were processed.
@@ -198,7 +203,7 @@ def ingest_pdfs(directory: str = "") -> str:
         return f"No PDF files found in `{target_dir}`."
 
     # Process all PDFs
-    chunks = process_pdf_directory(target_dir)
+    chunks = process_pdf_directory(target_dir, use_ocr=use_ocr)
     if not chunks:
         return "PDFs were found but no text could be extracted."
 
@@ -208,12 +213,68 @@ def ingest_pdfs(directory: str = "") -> str:
 
     files_set = {c.filename for c in chunks}
 
+    ocr_note = " (with OCR for scanned PDFs)" if use_ocr else ""
+    
     return (
-        f"**Ingestion complete!**\n\n"
+        f"**Ingestion complete!**{ocr_note}\n\n"
         f"- **PDFs processed**: {len(files_set)}\n"
         f"- **Chunks created**: {added}\n"
         f"- **Total chunks in store**: {store.total_chunks}\n"
         f"- **Files**: {', '.join(sorted(files_set))}\n\n"
+        f"You can now use `find_orphaned_quote` to search these documents."
+    )
+
+
+@mcp.tool()
+def ingest_pdfs_with_ocr(directory: str = "", language: str = "eng") -> str:
+    """
+    Ingest PDFs with OCR support for scanned documents.
+    
+    This tool is specifically designed for scanned academic papers,
+    historical documents, or image-only PDFs. It uses Tesseract OCR
+    to extract text from scanned pages.
+    
+    Requires tesseract-ocr to be installed on your system:
+    - Ubuntu/Debian: sudo apt-get install tesseract-ocr
+    - macOS: brew install tesseract
+    - Windows: https://github.com/UB-Mannheim/tesseract/wiki
+
+    Args:
+        directory: Path to the folder containing PDFs. If empty, defaults
+                   to the `student_pdfs/` directory.
+        language: OCR language code (default: "eng" for English).
+                  Use "eng+fra" for multiple languages.
+
+    Returns:
+        A summary of how many PDFs and chunks were processed.
+    """
+    target_dir = Path(directory) if directory else PDF_DIR
+
+    if not target_dir.is_dir():
+        return f"Directory not found: `{target_dir}`"
+
+    pdf_files = list(target_dir.glob("*.pdf"))
+    if not pdf_files:
+        return f"No PDF files found in `{target_dir}`."
+
+    # Process all PDFs with OCR enabled
+    chunks = process_pdf_directory(target_dir, use_ocr=True)
+    if not chunks:
+        return "PDFs were found but no text could be extracted (OCR may have failed)."
+
+    # Add to vector store and persist
+    added = store.add_chunks(chunks)
+    store.save()
+
+    files_set = {c.filename for c in chunks}
+
+    return (
+        f"**OCR Ingestion complete!**\n\n"
+        f"- **PDFs processed**: {len(files_set)}\n"
+        f"- **Chunks created**: {added}\n"
+        f"- **Total chunks in store**: {store.total_chunks}\n"
+        f"- **Files**: {', '.join(sorted(files_set))}\n"
+        f"- **OCR language**: {language}\n\n"
         f"You can now use `find_orphaned_quote` to search these documents."
     )
 

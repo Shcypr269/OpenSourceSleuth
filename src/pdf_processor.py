@@ -447,6 +447,7 @@ def process_pdf_directory(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
     strategy: str = "sentence",
+    use_ocr: bool = False,
 ) -> list[TextChunk]:
     """
     Process all PDFs in a directory and return a flat list of chunks.
@@ -457,6 +458,8 @@ def process_pdf_directory(
         chunk_overlap: Overlap in tokens (for 'fixed' strategy).
         strategy: Chunking strategy — 'sentence' (sentence-window,
                   default) or 'fixed' (sliding character window).
+        use_ocr: If True, use OCR for scanned PDFs. If False, skip
+                 OCR and only process text-based PDFs.
 
     Returns:
         Flat list of TextChunk objects from all PDFs in the directory.
@@ -474,21 +477,53 @@ def process_pdf_directory(
 
     for pdf_path in pdf_files:
         try:
+            # Try standard extraction first
             document = extract_text_from_pdf(pdf_path)
+            
+            # If no text extracted and OCR is enabled, try OCR
+            if not document.full_text.strip() and use_ocr:
+                logger.info(
+                    "No text found in '%s', attempting OCR...",
+                    pdf_path.name,
+                )
+                try:
+                    from src.ocr_processor import process_pdf_with_ocr_fallback
+                    
+                    ocr_text, used_ocr = process_pdf_with_ocr_fallback(pdf_path)
+                    if used_ocr:
+                        logger.info(
+                            "OCR successful for '%s': %d chars extracted",
+                            pdf_path.name, len(ocr_text),
+                        )
+                        document.full_text = ocr_text
+                    else:
+                        logger.warning(
+                            "OCR did not extract text from '%s'. Skipping.",
+                            pdf_path.name,
+                        )
+                        continue
+                except Exception as ocr_exc:
+                    logger.error(
+                        "OCR failed for '%s': %s. Skipping.",
+                        pdf_path.name, ocr_exc,
+                    )
+                    continue
+            
             if strategy == "sentence":
                 chunks = chunk_text_by_sentences(document)
             else:
                 chunks = chunk_text(document, chunk_size, chunk_overlap)
+            
             all_chunks.extend(chunks)
             logger.info(
-                "Processed '%s' -> %d chunks (strategy=%s)",
-                pdf_path.name, len(chunks), strategy,
+                "Processed '%s' -> %d chunks (strategy=%s, ocr=%s)",
+                pdf_path.name, len(chunks), strategy, use_ocr,
             )
         except Exception as exc:
             logger.error("Failed to process '%s': %s", pdf_path.name, exc)
 
     logger.info(
-        "Total: processed %d PDFs -> %d chunks from '%s' (strategy=%s).",
-        len(pdf_files), len(all_chunks), directory, strategy,
+        "Total: processed %d PDFs -> %d chunks from '%s' (strategy=%s, ocr=%s).",
+        len(pdf_files), len(all_chunks), directory, strategy, use_ocr,
     )
     return all_chunks
