@@ -162,34 +162,24 @@ Docker provides a sandboxed environment that eliminates dependency conflicts and
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop) installed and running
 
-#### 1. Quick Setup (Automated)
-
-**Linux/macOS:**
-```bash
-bash scripts/docker_setup.sh
-```
-
-**Windows PowerShell:**
-```powershell
-.\scripts\docker_setup.ps1
-```
-
-This script will:
-- Build the Docker image
-- Create necessary volumes for persistent data
-- Test the container
-- Provide configuration instructions
-
-#### 2. Manual Docker Setup
+#### 1. Build the Docker Image
 
 ```bash
-# Build the image
+# From the project root directory
 docker build -t sourcesleuth:latest .
+```
 
-# Create volume for persistent data
+#### 2. Create Persistent Volume
+
+```bash
+# Create Docker volume for FAISS index (persists between container restarts)
 docker volume create sourcesleuth_vector_data
+```
 
-# Test the container
+#### 3. Test the Container
+
+```bash
+# Test that the container starts correctly
 docker run --rm \
   -v ./student_pdfs:/app/student_pdfs \
   -v sourcesleuth_vector_data:/app/data \
@@ -197,7 +187,7 @@ docker run --rm \
   python -c "print('Container ready!')"
 ```
 
-#### 3. Configure MCP Host for Docker
+#### 4. Configure MCP Host for Docker
 
 To use the Dockerized server with Claude Desktop, update your `claude_desktop_config.json`:
 
@@ -241,46 +231,14 @@ To use the Dockerized server with Claude Desktop, update your `claude_desktop_co
 
 **Why this configuration is mandatory:**
 
-| Flag | Purpose |
-|------|---------|
-| `-i` | Keeps STDIN open for MCP stdio communication |
-| `--rm` | Cleans up container on exit (prevents orphaned containers) |
-| `-v ...:/app/student_pdfs` | Mounts your local PDFs into the container |
-| `-v sourcesleuth_vector_data:/app/data` | Named volume persists FAISS index between restarts |
+| Flag | Purpose | Consequence If Missing |
+|------|---------|----------------------|
+| `-i` | Keeps STDIN open for MCP JSON-RPC | Host cannot send queries |
+| `--rm` | Removes container on exit | Orphaned containers consume memory |
+| `-v ...:/app/student_pdfs` | Mounts user's PDFs | PyMuPDF cannot access files |
+| `-v sourcesleuth_vector_data:/app/data` | Named volume for index | Re-ingestion required every restart |
 
-#### 4. Development with Docker Compose
-
-For testing and development (not for MCP Host integration):
-
-```bash
-# Build and start
-docker-compose up --build
-
-# Stop (data persists in volume)
-docker-compose down
-
-# View logs
-docker-compose logs -f
-```
-
-> **Note:** Docker Compose is for development testing only. For actual MCP Host integration, use the `docker run` configuration above.
-
-#### 5. Container Resource Limits
-
-The Docker container is configured with memory limits to prevent system resource exhaustion:
-
-- **Memory Limit:** 2GB maximum
-- **Memory Reservation:** 512MB minimum
-- **CPU:** Unrestricted (adjust in `docker-compose.yml` if needed)
-
-To customize limits, edit `docker-compose.yml`:
-
-```yaml
-deploy:
-  resources:
-    limits:
-      memory: 4G  # Increase for large PDF collections
-```
+**Important:** The MCP Host must use `docker run -i --rm` exactly as shown above. Do not use Docker Compose for MCP integration — Compose handles stdio differently and will break the MCP protocol communication.
 
 Access the dashboard at [http://localhost:8501](http://localhost:8501) to search, upload PDFs, and view index statistics.
 

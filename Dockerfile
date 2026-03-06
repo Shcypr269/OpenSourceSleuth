@@ -1,8 +1,8 @@
 # Dockerfile for SourceSleuth MCP Server
-# 
+#
 # This Dockerfile containerizes the MCP server for local sandboxing.
 # It maintains stdio communication required by the Model Context Protocol.
-# 
+#
 # Usage:
 #   docker build -t sourcesleuth:latest .
 #   docker run -i --rm -v ./student_pdfs:/app/student_pdfs -v sourcesleuth_data:/app/data sourcesleuth:latest
@@ -49,8 +49,15 @@ COPY src/ ./src/
 # These will be replaced by actual volumes at runtime
 RUN mkdir -p /app/student_pdfs /app/data
 
-# Set appropriate permissions
-RUN chmod -R 755 /app
+# Create non-root user for security
+# Running as non-root prevents file ownership conflicts when mounting host volumes
+RUN groupadd --gid 1000 sourcesleuth && \
+    useradd --uid 1000 --gid sourcesleuth --shell /bin/bash --create-home sourcesleuth && \
+    chown -R sourcesleuth:sourcesleuth /app
+
+# Switch to non-root user
+# This is critical for security and prevents permission issues with mounted volumes
+USER sourcesleuth:sourcesleuth
 
 # Health check to verify the server can start
 # Note: This doesn't test MCP functionality, just that Python can import modules
