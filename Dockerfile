@@ -48,8 +48,10 @@ COPY requirements.txt pyproject.toml ./
 # Install Python dependencies
 # Using --no-cache-dir reduces image size
 # Installing [dev,ui,ocr] for full feature support
+# Also download NLTK data required for query expansion
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e ".[dev,ui,ocr]"
+    pip install --no-cache-dir -e ".[dev,ui,ocr]" && \
+    python -m nltk.downloader wordnet averaged_perceptron_tagger punkt omw-1.4
 
 # Copy the application code
 COPY src/ ./src/

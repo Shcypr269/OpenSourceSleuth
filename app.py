@@ -574,44 +574,33 @@ with st.sidebar:
                         f.write(uploaded_file.getbuffer())
                     saved_paths.append(save_path)
 
-                chunks = []
-                for pdf_path in saved_paths:
-                    try:
-                        # Lazy import to avoid loading PyMuPDF unnecessarily
-                        from src.pdf_processor import chunk_text, extract_text_from_pdf
+                # Use centralized PDF processor with OCR support (DRY principle)
+                try:
+                    from src.pdf_processor import process_pdf_directory
+                    
+                    # Process PDFs using centralized logic (includes OCR fallback)
+                    chunks = process_pdf_directory(
+                        directory=Path(temp_dir),
+                        use_ocr=enable_ocr,
+                        ocr_language=ocr_language,
+                    )
+                    
+                    if chunks:
+                        # Cache results in session state to avoid re-processing on UI re-runs
+                        if "processed_chunks" not in st.session_state:
+                            st.session_state.processed_chunks = []
+                        st.session_state.processed_chunks.extend(chunks)
                         
-                        # Try standard extraction first
-                        doc = extract_text_from_pdf(pdf_path)
+                        # Add to vector store and persist
+                        store = get_vector_store()
+                        added = store.add_chunks(chunks)
+                        store.save()
+                        st.success(f"Added {added} chunks from {len(uploaded_files)} PDF(s)")
+                    else:
+                        st.warning("No text could be extracted from uploaded PDFs.")
                         
-                        # If no text and OCR enabled, try OCR fallback
-                        if not doc.full_text.strip() and enable_ocr:
-                            st.info(f"Attempting OCR for {pdf_path.name} (language: {ocr_language})...")
-                            try:
-                                from src.ocr_processor import process_pdf_with_ocr_fallback
-                                ocr_text, used_ocr = process_pdf_with_ocr_fallback(
-                                    pdf_path, language=ocr_language
-                                )
-                                if used_ocr:
-                                    doc.full_text = ocr_text
-                                else:
-                                    st.warning(f"OCR failed for {pdf_path.name}, skipping.")
-                                    continue
-                            except Exception as ocr_exc:
-                                st.error(f"OCR error for {pdf_path.name}: {ocr_exc}")
-                                continue
-                        
-                        doc_chunks = chunk_text(doc)
-                        chunks.extend(doc_chunks)
-                    except Exception as e:
-                        st.error(f"Failed to process {pdf_path.name}: {e}")
-
-                if chunks:
-                    store = get_vector_store()
-                    added = store.add_chunks(chunks)
-                    store.save()
-                    st.success(f"Added {added} chunks from {len(uploaded_files)} PDF(s)")
-                else:
-                    st.warning("No text could be extracted from uploaded PDFs.")
+                except Exception as e:
+                    st.error(f"Failed to process PDFs: {e}")
 
     st.divider()
 
