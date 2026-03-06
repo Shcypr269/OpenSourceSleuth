@@ -34,6 +34,12 @@ class TestFindOrphanedQuote:
                 chunk_index=0,
                 start_char=0,
                 end_char=55,
+                title="",
+                authors="",
+                creation_date="",
+                publisher="",
+                journal="",
+                doi="",
             ),
         ]
         store.add_chunks(chunks)
@@ -68,6 +74,12 @@ class TestGetStoreStats:
                 chunk_index=0,
                 start_char=0,
                 end_char=19,
+                title="",
+                authors="",
+                creation_date="",
+                publisher="",
+                journal="",
+                doi="",
             ),
         ]
         store.add_chunks(chunks)
@@ -94,3 +106,40 @@ class TestCiteRecoveredSource:
         assert "APA" in result
         assert "page 5" in result
         assert "Full Citation" in result
+
+
+class TestIngestPdfs:
+    """Test the ingest_pdfs tool."""
+
+    def test_ingest_basic(self, tmp_path):
+        from src.mcp_server import ingest_pdfs, store
+        import fitz
+        
+        # Create a test PDF
+        doc = fitz.open()
+        doc.new_page()
+        doc.insert_text(fitz.Point(72, 72), "Test content for ingestion.", fontsize=11)
+        pdf_path = tmp_path / "test_ingest.pdf"
+        doc.save(str(pdf_path))
+        doc.close()
+        
+        store.clear()
+        result = ingest_pdfs(directory=str(tmp_path), enable_ocr=False, ocr_language="eng")
+        
+        assert "Ingestion complete" in result
+        assert "test_ingest.pdf" in result
+        assert "Chunks created" in result
+        
+        store.clear()
+
+    def test_ingest_directory_not_found(self):
+        from src.mcp_server import ingest_pdfs
+        
+        result = ingest_pdfs(directory="/nonexistent/path", enable_ocr=False, ocr_language="eng")
+        assert "Directory not found" in result
+
+    def test_ingest_no_pdfs(self, tmp_path):
+        from src.mcp_server import ingest_pdfs
+        
+        result = ingest_pdfs(directory=str(tmp_path), enable_ocr=False, ocr_language="eng")
+        assert "No PDF files found" in result

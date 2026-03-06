@@ -47,8 +47,9 @@ COPY requirements.txt pyproject.toml ./
 
 # Install Python dependencies
 # Using --no-cache-dir reduces image size
+# Installing [dev,ui,ocr] for full feature support
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e ".[dev,ui]"
+    pip install --no-cache-dir -e ".[dev,ui,ocr]"
 
 # Copy the application code
 COPY src/ ./src/

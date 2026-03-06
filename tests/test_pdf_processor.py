@@ -57,6 +57,12 @@ class TestTextChunk:
             chunk_index=0,
             start_char=0,
             end_char=11,
+            title="",
+            authors="",
+            creation_date="",
+            publisher="",
+            journal="",
+            doi="",
         )
         reconstructed = TextChunk.from_dict(chunk.to_dict())
         assert reconstructed.text == chunk.text
@@ -116,15 +122,15 @@ class TestChunking:
 
 class TestBatchProcessing:
     def test_process_directory(self, pdf_directory):
-        chunks = process_pdf_directory(pdf_directory)
+        chunks = process_pdf_directory(pdf_directory, use_ocr=False, ocr_language="eng")
         filenames = {c.filename for c in chunks}
         assert "paper_a.pdf" in filenames
         assert "paper_b.pdf" in filenames
 
     def test_empty_directory(self, tmp_path):
-        chunks = process_pdf_directory(tmp_path)
+        chunks = process_pdf_directory(tmp_path, use_ocr=False, ocr_language="eng")
         assert chunks == []
 
     def test_invalid_directory(self):
         with pytest.raises(NotADirectoryError):
-            process_pdf_directory("/nonexistent/path")
+            process_pdf_directory("/nonexistent/path", use_ocr=False, ocr_language="eng")
