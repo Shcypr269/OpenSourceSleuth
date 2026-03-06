@@ -5,8 +5,17 @@ PyMuPDF>=1.24.0
 faiss-cpu>=1.8.0
 numpy>=1.26.0
 scikit-learn>=1.4.0
+Pillow>=10.0.0
+
+# UI Dependencies
+streamlit>=1.30.0
+# OCR Dependencies (optional)
+easyocr>=1.7.0
+pytesseract>=0.3.10
 
 # Development Dependencies
 pytest>=8.0.0
 pytest-asyncio>=0.23.0
 ruff>=0.3.0
+
+
