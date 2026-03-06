@@ -24,112 +24,133 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Query Expansion Helper (Domain-Agnostic, WordNet-based)
+# Query Expansion Helper (Domain-Agnostic, POS-Tagged WordNet)
 # ---------------------------------------------------------------------------
 
-def expand_query_keywords(query: str, max_synonyms: int = 3) -> list[str]:
+def _get_wordnet_pos(treebank_tag: str) -> str | None:
     """
-    Expand a query with domain-agnostic synonyms using WordNet.
+    Map Penn Treebank POS tags to WordNet POS tags.
     
-    This uses NLTK's WordNet corpus to dynamically generate synonyms
-    for content words (nouns, verbs, adjectives) in the query. This
-    approach works for ANY academic domain — physics, history, biology,
-    literature, etc. — without hardcoded keyword lists.
+    Args:
+        treebank_tag: POS tag from nltk.pos_tag (e.g., 'NN', 'VB', 'JJ')
+        
+    Returns:
+        WordNet POS constant or None if not a content word.
+    """
+    if treebank_tag.startswith('NN'):
+        return 'n'  # Noun
+    elif treebank_tag.startswith('VB'):
+        return 'v'  # Verb
+    elif treebank_tag.startswith('JJ'):
+        return 'a'  # Adjective
+    elif treebank_tag.startswith('RB'):
+        return 'r'  # Adverb
+    return None
+
+
+def expand_query_keywords(query: str, max_synonyms: int = 2) -> list[str]:
+    """
+    Expand a query with domain-agnostic synonyms using POS-tagged WordNet.
+    
+    This uses NLTK's POS tagger to identify nouns and verbs, then retrieves
+    synonyms ONLY from the matching WordNet POS category. This prevents
+    cross-POS semantic noise (e.g., expanding noun "force" with verb synonyms
+    like "coerce", "ram").
+    
+    Returns a list of DISTINCT query variations for separate embedding,
+    NOT a concatenated bloated string.
     
     Args:
         query: The original search query.
-        max_synonyms: Maximum synonyms to add per content word.
+        max_synonyms: Maximum synonyms per content word.
         
     Returns:
-        List containing original query + expanded variations.
+        List of distinct query strings to search:
+        - [0]: Original query
+        - [1:]: Synonym-substituted variations
     """
     # Lazy import NLTK only when expansion is needed
     try:
         from nltk.corpus import wordnet as wn
+        from nltk import pos_tag
         import nltk
         
-        # Download WordNet data on first run (cached locally)
+        # Download NLTK data on first run (cached locally)
         try:
             wn.ensure_loaded()
         except LookupError:
             nltk.download('wordnet', quiet=True)
             nltk.download('omw-1.4', quiet=True)
+            nltk.download('averaged_perceptron_tagger', quiet=True)
+            nltk.download('punkt', quiet=True)
             
     except ImportError:
         # NLTK not installed — return original query only
         return [query]
     
-    # Tokenize: extract content words (simple whitespace + punctuation split)
-    import re
-    tokens = re.findall(r'\b[a-zA-Z]{3,}\b', query.lower())
+    # Tokenize and POS tag
+    try:
+        tokens = nltk.word_tokenize(query)
+        tagged = pos_tag(tokens)
+    except Exception:
+        # Fallback if tokenization fails
+        return [query]
     
-    # Skip stopwords (minimal list for speed)
-    stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-                 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
-                 'would', 'could', 'should', 'may', 'might', 'must', 'shall',
-                 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in',
-                 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into',
-                 'through', 'during', 'before', 'after', 'above', 'below',
-                 'between', 'under', 'again', 'further', 'then', 'once',
-                 'and', 'but', 'or', 'nor', 'so', 'yet', 'both', 'either',
-                 'neither', 'not', 'only', 'own', 'same', 'than', 'too',
-                 'very', 'just', 'also', 'now', 'here', 'there', 'when',
-                 'where', 'why', 'how', 'all', 'each', 'every', 'both',
-                 'few', 'more', 'most', 'other', 'some', 'such', 'no',
-                 'any', 'this', 'that', 'these', 'those', 'what', 'which'}
-    
-    content_words = [t for t in tokens if t not in stopwords]
+    # Extract content words (nouns, verbs, adjectives) with POS
+    content_words = []
+    for word, tag in tagged:
+        pos = _get_wordnet_pos(tag)
+        if pos and len(word) > 2:
+            content_words.append((word.lower(), pos))
     
     if not content_words:
         return [query]
     
-    expansions = [query]  # Always include original
+    # Build distinct query variations
+    variations = [query]  # Always include original
     
-    # Generate synonym-expanded queries
-    synonym_additions = []
-    for word in content_words[:5]:  # Limit to first 5 content words for speed
-        synsets = wn.synsets(word)
+    # Generate synonym-substituted queries
+    # Strategy: For each content word, create a variation with its synonyms
+    for word, pos in content_words[:4]:  # Limit to first 4 words for speed
+        synsets = wn.synsets(word, pos=pos)
         if not synsets:
             continue
-            
-        # Collect up to max_synonyms synonyms
+        
+        # Collect synonyms from top 2 synsets
         synonyms = set()
-        for synset in synsets[:2]:  # Check first 2 synsets
+        for synset in synsets[:2]:
             for lemma in synset.lemmas()[:max_synonyms]:
                 synonym = lemma.name().replace('_', ' ')
                 if synonym.lower() != word and len(synonym) > 2:
                     synonyms.add(synonym.lower())
         
         if synonyms:
-            synonym_additions.append(f"{word} ({', '.join(list(synonyms)[:max_synonyms])})")
+            # Create variation: replace word with top synonym in the query
+            top_synonym = list(synonyms)[0]
+            variation = query.replace(word, top_synonym, 1)
+            if variation != query:
+                variations.append(variation)
     
-    # Create expanded query with synonyms in parentheses
-    if synonym_additions:
-        expanded = query + " " + " ".join(synonym_additions)
-        expansions.append(expanded)
-    
-    return expansions
+    return variations
 
 
 def expand_query_simple(query: str) -> list[str]:
     """
     Fallback query expansion when NLTK/WordNet is unavailable.
     
-    Adds generic academic context terms that apply across all domains.
+    Returns distinct query variations with generic academic context.
     
     Args:
         query: The original search query.
         
     Returns:
-        List of expanded query variations.
+        List of distinct query strings.
     """
-    expansions = [query]
-    
-    # Generic academic expansions (domain-agnostic)
-    expansions.append(query + " academic paper scholarly source")
-    expansions.append(query + " research study citation reference")
-    
-    return expansions
+    return [
+        query,
+        query + " academic paper scholarly source",
+        query + " research study citation reference",
+    ]
 
 # --- Premium CSS Styling ---
 st.markdown("""
@@ -642,28 +663,51 @@ if search_clicked and query:
 
     with st.spinner("Searching your documents ..."):
         # FIXED: Wire search_mode parameter to enable hybrid search
-        # FIXED: Try query expansion if initial search returns no results
+        # FIXED: Try query expansion with POS-tagged WordNet synonyms
         results = store.search(query=query, top_k=top_k, mode=search_mode)
         
-        # If no results with original query, try expanded queries
-        if not results and search_mode in ["hybrid", "dense"]:
-            st.info("No direct matches found. Trying query expansion...")
+        # Track seen chunk indices to deduplicate results
+        seen_chunk_indices = set()
+        if results:
+            for r in results:
+                seen_chunk_indices.add((r.get('filename'), r.get('page'), r.get('start_char')))
+        
+        # If no results or few results, try expanded queries
+        if len(results) < 3 and search_mode in ["hybrid", "dense"]:
+            st.info("Trying query expansion with synonyms...")
             
-            # Try WordNet-based expansion first (if NLTK available)
+            # Get POS-tagged WordNet expansions (distinct query variations)
             expansions = expand_query_keywords(query)
             
             # Fallback to simple expansion if WordNet returned only original
             if len(expansions) <= 1:
                 expansions = expand_query_simple(query)
             
-            for expanded in expansions[:2]:  # Try first 2 expansions
-                if expanded == query:
-                    continue  # Skip if same as original
-                expanded_results = store.search(query=expanded, top_k=top_k, mode=search_mode)
-                if expanded_results:
-                    st.success(f"Found matches with expanded query!")
-                    results = expanded_results
+            # Search each variation separately and deduplicate
+            for expanded_query in expansions[1:]:  # Skip original (already searched)
+                if expanded_query == query:
+                    continue
+                    
+                expanded_results = store.search(query=expanded_query, top_k=top_k, mode=search_mode)
+                
+                # Deduplicate: only add results we haven't seen
+                new_results = []
+                for r in expanded_results:
+                    key = (r.get('filename'), r.get('page'), r.get('start_char'))
+                    if key not in seen_chunk_indices:
+                        new_results.append(r)
+                        seen_chunk_indices.add(key)
+                
+                if new_results:
+                    st.success(f"Found {len(new_results)} additional matches with expanded query!")
+                    results.extend(new_results)
+                    
+                    # Stop after finding new results
                     break
+        
+        # Sort all results by score descending
+        if results:
+            results = sorted(results, key=lambda x: -x.get('score', 0))
 
     if not results:
         st.warning(
