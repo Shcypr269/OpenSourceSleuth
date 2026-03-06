@@ -31,10 +31,10 @@ assignees: []
 
 <!-- Please complete the following information: -->
 
-- **OS**: [e.g., Windows 11, macOS Sonoma, Ubuntu 22.04]
-- **Python Version**: [e.g., 3.10.12]
-- **SourceSleuth Version**: [e.g., 1.0.0]
-- **Installation Method**: [e.g., pip install -e ., from source]
+- **OS**: <!-- e.g., Windows 11, macOS Sonoma, Ubuntu 22.04 -->
+- **Python Version**: <!-- e.g., 3.10.12 -->
+- **SourceSleuth Version**: <!-- e.g., 1.0.0 -->
+- **Installation Method**: <!-- e.g., pip install -e ., from source -->
 
 ## Additional Context
 

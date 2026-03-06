@@ -26,7 +26,8 @@ python -m venv .venv
 source .venv/bin/activate    # Linux/macOS
 .venv\Scripts\activate       # Windows
 
-pip install -e ".[dev]"
+# Install with all optional dependencies (dev tools, UI, OCR)
+pip install -e ".[dev,ui,ocr]"
 ```
 
 ### 3. Install Pre-commit Hooks (Recommended)
