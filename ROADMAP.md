@@ -1,10 +1,10 @@
-# 🗺️ SourceSleuth Roadmap
+# SourceSleuth Roadmap
 
 This document outlines the development roadmap for SourceSleuth, from initial release to future enhancements.
 
 ---
 
-## ✅ v1.0 — Initial Release (Current)
+## v1.0 — Initial Release (Current)
 
 **Status:** Complete
 
@@ -33,7 +33,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🚧 v1.1 — Enhanced Document Support (Q2 2026)
+## v1.1 — Enhanced Document Support (Q2 2026)
 
 **Status:** Planned
 
@@ -50,7 +50,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🚧 v1.2 — Advanced Search Features (Q3 2026)
+## v1.2 — Advanced Search Features (Q3 2026)
 
 **Status:** Planned
 
@@ -68,7 +68,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🚧 v1.5 — Format Expansion (Q4 2026)
+## v1.5 — Format Expansion (Q4 2026)
 
 **Status:** Planned
 
@@ -90,7 +90,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🚧 v2.0 — Scalability (Q1 2027)
+## v2.0 — Scalability (Q1 2027)
 
 **Status:** Planned
 
@@ -107,7 +107,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🔮 Future Considerations
+## Future Considerations
 
 ### AI/ML Improvements
 - [ ] **Domain-Specific Embeddings** — Fine-tune on academic text
@@ -128,7 +128,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 📊 Priority Matrix
+## Priority Matrix
 
 | Feature | Impact | Effort | Priority |
 |---|---|---|---|
@@ -142,7 +142,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -153,15 +153,15 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 - Write tutorials and examples
 
 ### Areas We Need Help
-- 📄 **Document parsers** — EPUB, DOCX, LaTeX
-- 🧠 **ML models** — Fine-tuning embeddings for academic text
-- 🎨 **UI/UX** — Web and desktop interfaces
-- 🧪 **Testing** — Increase test coverage
-- 📚 **Documentation** — Tutorials, examples, API docs
+- **Document parsers** — EPUB, DOCX, LaTeX
+- **ML models** — Fine-tuning embeddings for academic text
+- **UI/UX** — Web and desktop interfaces
+- **Testing** — Increase test coverage
+- **Documentation** — Tutorials, examples, API docs
 
 ---
 
-## 📝 Changelog
+## Changelog
 
 ### v1.0.0 (March 2026)
 - Initial release
@@ -172,7 +172,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 This roadmap was inspired by feedback from the open-source community and requirements from the AI/ML hackathon track.
 
