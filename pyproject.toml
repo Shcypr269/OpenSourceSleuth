@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "An MCP server that helps students recover citations for orphaned quotes by performing semantic search across local academic PDFs."
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 authors = [
     {name = "SourceSleuth Contributors"}
 ]
