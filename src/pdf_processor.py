@@ -21,10 +21,11 @@ DEFAULT_SENTENCES_PER_WINDOW = 4   # group 3–5 sentences per chunk
 DEFAULT_SENTENCE_OVERLAP = 1       # 1-sentence overlap between windows
 
 # Regex-based sentence splitter (handles abbreviations, decimals, etc.)
+# Note: We use a simpler pattern because Python's re requires fixed-width lookbehinds
 _SENTENCE_SPLIT_RE = re.compile(
-    r'(?<=[.!?])'            # lookbehind: sentence-ending punctuation
-    r'(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|vs|e\.g|i\.e|etc|approx|al)\.)' # skip abbrevs
-    r'\s+'                    # require whitespace after punctuation
+    r'(?<=[.!?])'           # lookbehind: sentence-ending punctuation
+    r'(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|vs|etc|al)\.)'  # skip common abbreviations (fixed width)
+    r'\s+'                   # require whitespace after punctuation
 )
 
 
