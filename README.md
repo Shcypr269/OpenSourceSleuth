@@ -2,7 +2,7 @@
 
 > **Recover citations for orphaned quotes using local semantic search — powered by MCP.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-green.svg)](https://python.org)
 [![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-purple.svg)](https://modelcontextprotocol.io)
 
@@ -213,6 +213,47 @@ export SOURCESLEUTH_DATA_DIR="/home/student/.sourcesleuth/data"
 
 ---
 
+## 🖥️ CLI Usage
+
+SourceSleuth includes a standalone CLI tool for ingestion without requiring an MCP host.
+
+### Installation
+
+```bash
+pip install -e .
+```
+
+### Commands
+
+```bash
+# Ingest PDFs from a directory
+sourcesleuth-ingest pdfs --directory /path/to/pdfs
+
+# Ingest arXiv papers (by category)
+sourcesleuth-ingest arxiv --category cs. --max-records 5000
+
+# View vector store statistics
+sourcesleuth-ingest stats
+
+# Clear the vector store
+sourcesleuth-ingest clear
+```
+
+### Using Python Directly
+
+```bash
+# Ingest PDFs
+python -m src.ingest pdfs
+
+# Ingest arXiv papers
+python -m src.ingest arxiv --category cs.AI
+
+# View stats
+python -m src.ingest stats
+```
+
+---
+
 ## 🧪 Testing
 
 ```bash
@@ -237,7 +278,8 @@ sourcesleuth/
 │   ├── mcp_server.py            # MCP server (tools, resources, prompts)
 │   ├── pdf_processor.py         # PDF extraction & chunking
 │   ├── vector_store.py          # FAISS vector store
-│   └── dataset_preprocessor.py  # arXiv metadata preprocessing
+│   ├── dataset_preprocessor.py  # arXiv metadata preprocessing
+│   └── ingest.py                # CLI ingestion tool
 ├── student_pdfs/                # Your PDF files go here
 ├── data/                        # Persisted vector store + arXiv dataset
 ├── tests/
@@ -249,6 +291,7 @@ sourcesleuth/
 ├── requirements.txt             # Pip requirements
 ├── README.md                    # This file
 ├── CONTRIBUTING.md              # Contributor guide
+├── ROADMAP.md                   # Development roadmap
 └── LICENSE                      # MIT License
 ```
 
@@ -271,7 +314,7 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📜 License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
+This project is licensed under the Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 ---
 
