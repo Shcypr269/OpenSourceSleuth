@@ -12,7 +12,7 @@
 
 Every student has been there: you're polishing your research paper and find a brilliant quote — but you've lost the citation. Which paper was it from? Which page?
 
-**SourceSleuth** solves this by running a local [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that semantically searches your academic PDFs. Connect it to your AI assistant (Claude Desktop, Cursor, Windsurf) and ask: *"Where did I get this quote?"*
+**SourceSleuth** solves this by running a local [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that semantically searches your academic PDFs. Connect it to your AI assistant (Claude Desktop, Cursor, Windsurf) or use the web UI to ask: *"Where did I get this quote?"*
 
 Everything runs **locally on your machine** — no data leaves your laptop, no API keys needed.
 
@@ -28,6 +28,7 @@ Everything runs **locally on your machine** — no data leaves your laptop, no A
 | `get_store_stats` | 🔧 Tool | View statistics about indexed documents |
 | `sourcesleuth://pdfs/{filename}` | 📄 Resource | Read the full text of any indexed PDF |
 | `cite_recovered_source` | 💬 Prompt | Format recovered sources into proper APA/MLA/Chicago citations |
+| **Web UI** | 🌐 Interface | Interactive browser-based search interface |
 
 ---
 
@@ -58,6 +59,8 @@ Everything runs **locally on your machine** — no data leaves your laptop, no A
 | `src/pdf_processor.py` | PDF text extraction (PyMuPDF) and chunking |
 | `src/vector_store.py` | FAISS index management, embedding, persistence |
 | `src/dataset_preprocessor.py` | arXiv metadata preprocessing, LaTeX cleaning, filtering |
+| `src/ingest.py` | CLI tool for standalone ingestion |
+| `app.py` | Streamlit web UI |
 
 ---
 
@@ -66,12 +69,12 @@ Everything runs **locally on your machine** — no data leaves your laptop, no A
 ### Prerequisites
 
 - **Python 3.10+**
-- An MCP-compatible host (e.g., [Claude Desktop](https://claude.ai/desktop))
+- An MCP-compatible host (e.g., [Claude Desktop](https://claude.ai/desktop)) — optional
 
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/your-username/sourcesleuth.git
+git clone https://github.com/Ishwarpatra/OpenSourceSleuth.git
 cd sourcesleuth
 
 # Create a virtual environment
@@ -80,7 +83,7 @@ source .venv/bin/activate    # Linux/macOS
 .venv\Scripts\activate       # Windows
 
 # Install dependencies
-pip install -e ".[dev]"
+pip install -e ".[dev,ui]"
 ```
 
 ### 2. Add Your PDFs
@@ -91,7 +94,7 @@ Drop your academic PDF files into the `student_pdfs/` directory:
 cp ~/Downloads/research_paper.pdf student_pdfs/
 ```
 
-### 3. Configure Your MCP Host
+### 3. Configure Your MCP Host (Optional)
 
 #### Claude Desktop
 
@@ -123,15 +126,62 @@ Add to your MCP settings:
 }
 ```
 
-### 4. Use It
+---
 
-In your AI assistant, simply ask:
+## 🖥️ Web UI
 
-> *"Ingest my PDFs from the student_pdfs folder."*
+SourceSleuth includes a modern web interface for easy searching:
 
-Then:
+### Launch the Web UI
 
-> *"Where did I get this quote: 'Attention is all you need for sequence transduction'?"*
+```bash
+streamlit run app.py
+```
+
+The UI will open in your browser at `http://localhost:8501`
+
+### Features
+
+- 🔍 **Search Interface** — Paste orphaned quotes and find sources
+- 📊 **Statistics Dashboard** — View indexed documents and chunks
+- 📁 **PDF Upload** — Upload PDFs directly through the browser
+- ⚙️ **Search Settings** — Adjust result count and similarity threshold
+- 🗑️ **Index Management** — Refresh or clear the vector store
+
+---
+
+## 🖥️ CLI Usage
+
+SourceSleuth includes a standalone CLI tool for ingestion without requiring an MCP host.
+
+### Commands
+
+```bash
+# Ingest PDFs from a directory
+sourcesleuth-ingest pdfs --directory /path/to/pdfs
+
+# Ingest arXiv papers (by category)
+sourcesleuth-ingest arxiv --category cs. --max-records 5000
+
+# View vector store statistics
+sourcesleuth-ingest stats
+
+# Clear the vector store
+sourcesleuth-ingest clear
+```
+
+### Using Python Directly
+
+```bash
+# Ingest PDFs
+python -m src.ingest pdfs
+
+# Ingest arXiv papers
+python -m src.ingest arxiv --category cs.AI
+
+# View stats
+python -m src.ingest stats
+```
 
 ---
 
@@ -213,47 +263,6 @@ export SOURCESLEUTH_DATA_DIR="/home/student/.sourcesleuth/data"
 
 ---
 
-## 🖥️ CLI Usage
-
-SourceSleuth includes a standalone CLI tool for ingestion without requiring an MCP host.
-
-### Installation
-
-```bash
-pip install -e .
-```
-
-### Commands
-
-```bash
-# Ingest PDFs from a directory
-sourcesleuth-ingest pdfs --directory /path/to/pdfs
-
-# Ingest arXiv papers (by category)
-sourcesleuth-ingest arxiv --category cs. --max-records 5000
-
-# View vector store statistics
-sourcesleuth-ingest stats
-
-# Clear the vector store
-sourcesleuth-ingest clear
-```
-
-### Using Python Directly
-
-```bash
-# Ingest PDFs
-python -m src.ingest pdfs
-
-# Ingest arXiv papers
-python -m src.ingest arxiv --category cs.AI
-
-# View stats
-python -m src.ingest stats
-```
-
----
-
 ## 🧪 Testing
 
 ```bash
@@ -262,6 +271,9 @@ pytest
 
 # Run with verbose output
 pytest -v
+
+# Run integration tests with your PDFs
+pytest tests/test_integration_pdfs.py -v
 
 # Run a specific test module
 pytest tests/test_pdf_processor.py -v
@@ -286,13 +298,15 @@ sourcesleuth/
 │   ├── test_pdf_processor.py    # PDF processor tests
 │   ├── test_vector_store.py     # Vector store tests
 │   ├── test_mcp_server.py       # MCP tool tests
-│   └── test_dataset_preprocessor.py  # Preprocessor tests
+│   ├── test_dataset_preprocessor.py  # Preprocessor tests
+│   └── test_integration_pdfs.py # Integration tests with real PDFs
+├── app.py                       # Streamlit web UI
 ├── pyproject.toml               # Project config & dependencies
 ├── requirements.txt             # Pip requirements
 ├── README.md                    # This file
 ├── CONTRIBUTING.md              # Contributor guide
 ├── ROADMAP.md                   # Development roadmap
-└── LICENSE                      # MIT License
+└── LICENSE                      # Apache 2.0 License
 ```
 
 ---
