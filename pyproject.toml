@@ -43,6 +43,7 @@ dev = [
 ui = [
     "streamlit>=1.30.0",
     "pandas>=2.0.0",
+    "nltk>=3.8.0",  # WordNet-based query expansion
 ]
 
 [project.scripts]

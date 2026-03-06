@@ -24,57 +24,110 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# Query Expansion Helper (Lightweight, LLM-free)
+# Query Expansion Helper (Domain-Agnostic, WordNet-based)
 # ---------------------------------------------------------------------------
 
-def expand_query_keywords(query: str) -> list[str]:
+def expand_query_keywords(query: str, max_synonyms: int = 3) -> list[str]:
     """
-    Expand a query with related keywords for better semantic search.
+    Expand a query with domain-agnostic synonyms using WordNet.
     
-    This is a lightweight, rule-based expansion that runs locally without
-    requiring an LLM call. It adds domain-specific synonyms and related
-    concepts to improve recall on abstract or technical queries.
+    This uses NLTK's WordNet corpus to dynamically generate synonyms
+    for content words (nouns, verbs, adjectives) in the query. This
+    approach works for ANY academic domain — physics, history, biology,
+    literature, etc. — without hardcoded keyword lists.
+    
+    Args:
+        query: The original search query.
+        max_synonyms: Maximum synonyms to add per content word.
+        
+    Returns:
+        List containing original query + expanded variations.
+    """
+    # Lazy import NLTK only when expansion is needed
+    try:
+        from nltk.corpus import wordnet as wn
+        import nltk
+        
+        # Download WordNet data on first run (cached locally)
+        try:
+            wn.ensure_loaded()
+        except LookupError:
+            nltk.download('wordnet', quiet=True)
+            nltk.download('omw-1.4', quiet=True)
+            
+    except ImportError:
+        # NLTK not installed — return original query only
+        return [query]
+    
+    # Tokenize: extract content words (simple whitespace + punctuation split)
+    import re
+    tokens = re.findall(r'\b[a-zA-Z]{3,}\b', query.lower())
+    
+    # Skip stopwords (minimal list for speed)
+    stopwords = {'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
+                 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will',
+                 'would', 'could', 'should', 'may', 'might', 'must', 'shall',
+                 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in',
+                 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into',
+                 'through', 'during', 'before', 'after', 'above', 'below',
+                 'between', 'under', 'again', 'further', 'then', 'once',
+                 'and', 'but', 'or', 'nor', 'so', 'yet', 'both', 'either',
+                 'neither', 'not', 'only', 'own', 'same', 'than', 'too',
+                 'very', 'just', 'also', 'now', 'here', 'there', 'when',
+                 'where', 'why', 'how', 'all', 'each', 'every', 'both',
+                 'few', 'more', 'most', 'other', 'some', 'such', 'no',
+                 'any', 'this', 'that', 'these', 'those', 'what', 'which'}
+    
+    content_words = [t for t in tokens if t not in stopwords]
+    
+    if not content_words:
+        return [query]
+    
+    expansions = [query]  # Always include original
+    
+    # Generate synonym-expanded queries
+    synonym_additions = []
+    for word in content_words[:5]:  # Limit to first 5 content words for speed
+        synsets = wn.synsets(word)
+        if not synsets:
+            continue
+            
+        # Collect up to max_synonyms synonyms
+        synonyms = set()
+        for synset in synsets[:2]:  # Check first 2 synsets
+            for lemma in synset.lemmas()[:max_synonyms]:
+                synonym = lemma.name().replace('_', ' ')
+                if synonym.lower() != word and len(synonym) > 2:
+                    synonyms.add(synonym.lower())
+        
+        if synonyms:
+            synonym_additions.append(f"{word} ({', '.join(list(synonyms)[:max_synonyms])})")
+    
+    # Create expanded query with synonyms in parentheses
+    if synonym_additions:
+        expanded = query + " " + " ".join(synonym_additions)
+        expansions.append(expanded)
+    
+    return expansions
+
+
+def expand_query_simple(query: str) -> list[str]:
+    """
+    Fallback query expansion when NLTK/WordNet is unavailable.
+    
+    Adds generic academic context terms that apply across all domains.
     
     Args:
         query: The original search query.
         
     Returns:
-        List of expanded query variations to try.
+        List of expanded query variations.
     """
-    expansions = []
-    query_lower = query.lower()
+    expansions = [query]
     
-    # Physics-related expansions
-    if "wave" in query_lower or "interference" in query_lower:
-        expansions.append(query + " Young's double slit diffraction pattern")
-        expansions.append(query + " De Broglie wavelength dual nature")
-        expansions.append(query + " constructive destructive interference")
-    
-    if "fringes" in query_lower or "bright" in query_lower or "dark" in query_lower:
-        expansions.append(query + " interference pattern maxima minima")
-        expansions.append(query + " optical path difference phase")
-    
-    if "photoelectric" in query_lower or "photon" in query_lower:
-        expansions.append(query + " Einstein photoelectric effect quantum")
-        expansions.append(query + " work function threshold frequency")
-    
-    if "electron" in query_lower or "orbit" in query_lower:
-        expansions.append(query + " Bohr model atomic structure")
-        expansions.append(query + " energy level transition spectral")
-    
-    # ML/AI expansions
-    if "attention" in query_lower or "transformer" in query_lower:
-        expansions.append(query + " self-attention mechanism encoder decoder")
-        expansions.append(query + " Vaswani neural network sequence")
-    
-    if "embedding" in query_lower or "semantic" in query_lower:
-        expansions.append(query + " vector representation similarity")
-        expansions.append(query + " dense retrieval FAISS cosine")
-    
-    # If no domain-specific expansions, add generic paraphrases
-    if not expansions:
-        expansions.append(query + " original source academic paper")
-        expansions.append(query + " cited reference scholarly")
+    # Generic academic expansions (domain-agnostic)
+    expansions.append(query + " academic paper scholarly source")
+    expansions.append(query + " research study citation reference")
     
     return expansions
 
@@ -594,9 +647,18 @@ if search_clicked and query:
         
         # If no results with original query, try expanded queries
         if not results and search_mode in ["hybrid", "dense"]:
-            st.info("No direct matches found. Trying expanded queries...")
+            st.info("No direct matches found. Trying query expansion...")
+            
+            # Try WordNet-based expansion first (if NLTK available)
             expansions = expand_query_keywords(query)
+            
+            # Fallback to simple expansion if WordNet returned only original
+            if len(expansions) <= 1:
+                expansions = expand_query_simple(query)
+            
             for expanded in expansions[:2]:  # Try first 2 expansions
+                if expanded == query:
+                    continue  # Skip if same as original
                 expanded_results = store.search(query=expanded, top_k=top_k, mode=search_mode)
                 if expanded_results:
                     st.success(f"Found matches with expanded query!")
