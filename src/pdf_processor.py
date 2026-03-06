@@ -20,13 +20,79 @@ APPROX_CHARS_PER_TOKEN = 4    # rough estimate for English text
 DEFAULT_SENTENCES_PER_WINDOW = 4   # group 3–5 sentences per chunk
 DEFAULT_SENTENCE_OVERLAP = 1       # 1-sentence overlap between windows
 
-# Regex-based sentence splitter (handles abbreviations, decimals, etc.)
-# Note: We use a simpler pattern because Python's re requires fixed-width lookbehinds
-_SENTENCE_SPLIT_RE = re.compile(
-    r'(?<=[.!?])'           # lookbehind: sentence-ending punctuation
-    r'(?<!\b(?:Mr|Mrs|Ms|Dr|Prof|vs|etc|al)\.)'  # skip common abbreviations (fixed width)
-    r'\s+'                   # require whitespace after punctuation
-)
+# Regex-based sentence splitter
+# Uses a simpler approach: split on sentence-ending punctuation followed by space
+# This avoids Python's fixed-width lookbehind requirement
+_SENTENCE_END_RE = re.compile(r'([.!?]+)\s+')
+
+
+def _split_sentences(text: str) -> list[str]:
+    """
+    Split text into sentences using regex-based segmentation.
+    
+    Handles common abbreviations by checking for known patterns.
+    Falls back to newline-based splitting if regex produces fewer than 2 sentences.
+    
+    Args:
+        text: The text to split into sentences.
+        
+    Returns:
+        List of sentences.
+    """
+    # Common abbreviations that shouldn't end sentences
+    abbreviations = {'Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'vs', 'etc', 'al', 
+                     'e.g', 'i.e', 'approx', 'Inc', 'Ltd', 'Corp', 'Co'}
+    
+    # Split on sentence-ending punctuation, keeping the punctuation
+    parts = _SENTENCE_END_RE.split(text)
+    
+    # Reconstruct sentences (parts alternates between text and punctuation)
+    sentences = []
+    i = 0
+    current_sentence = ""
+    
+    while i < len(parts):
+        part = parts[i].strip()
+        if not part:
+            i += 1
+            continue
+            
+        # Check if next part is punctuation
+        if i + 1 < len(parts) and parts[i + 1] in ['.', '!', '?']:
+            punct = parts[i + 1]
+            # Check if this might be an abbreviation (last word before punct)
+            words = part.split()
+            last_word = words[-1].rstrip('.') if words else ""
+            
+            if last_word in abbreviations:
+                # Abbreviation - continue building sentence
+                current_sentence += part + punct + " "
+                i += 2
+                # Also consume the next part if it exists
+                if i < len(parts):
+                    current_sentence += parts[i] + " "
+                    i += 1
+            else:
+                # End of sentence
+                current_sentence += part + punct
+                if current_sentence.strip():
+                    sentences.append(current_sentence.strip())
+                current_sentence = ""
+                i += 2
+        else:
+            # No punctuation, continue building sentence
+            current_sentence += part + " "
+            i += 1
+    
+    # Add any remaining text
+    if current_sentence.strip():
+        sentences.append(current_sentence.strip())
+    
+    # Fallback: if we got very few sentences, try splitting on newlines
+    if len(sentences) < 2 and '\n' in text:
+        sentences = [s.strip() for s in text.split('\n') if s.strip()]
+    
+    return sentences
 
 
 @dataclass
@@ -282,25 +348,6 @@ def chunk_text(
 
 
 # Sentence-Window Chunking
-
-def _split_sentences(text: str) -> list[str]:
-    """
-    Split text into sentences using regex-based segmentation.
-
-    Handles common abbreviations (Mr., Dr., e.g., etc.) to avoid
-    false splits. Falls back to newline-based splitting if regex
-    produces fewer than 2 sentences.
-    """
-    sentences = _SENTENCE_SPLIT_RE.split(text)
-    # Filter out empty strings and strip whitespace
-    sentences = [s.strip() for s in sentences if s.strip()]
-
-    # Fallback: if we got very few sentences, try splitting on newlines
-    if len(sentences) < 2 and '\n' in text:
-        sentences = [s.strip() for s in text.split('\n') if s.strip()]
-
-    return sentences
-
 
 def chunk_text_by_sentences(
     document: PDFDocument,
