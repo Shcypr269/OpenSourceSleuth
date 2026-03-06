@@ -136,7 +136,7 @@ def ocr_image(image_path: str | Path, language: str = "eng") -> OCRResult:
 def ocr_pdf(pdf_path: str | Path, language: str = "eng", dpi: int = 300) -> list[OCRResult]:
     """
     Perform OCR on a scanned PDF (image-only PDF).
-    
+
     Converts each PDF page to an image and runs Tesseract OCR.
     
     Args:
@@ -149,7 +149,7 @@ def ocr_pdf(pdf_path: str | Path, language: str = "eng", dpi: int = 300) -> list
         List of OCRResult objects, one per page.
         
     Raises:
-        RuntimeError: If OCR dependencies are not installed.
+        RuntimeError: If OCR dependencies are not installed or language pack is missing.
         FileNotFoundError: If the PDF does not exist.
     """
     if not OCR_AVAILABLE or not PDF2IMAGE_AVAILABLE:
@@ -180,10 +180,22 @@ def ocr_pdf(pdf_path: str | Path, language: str = "eng", dpi: int = 300) -> list
     for page_num, image in enumerate(images, start=1):
         logger.info("Processing page %d/%d", page_num, len(images))
         
-        # Get OCR data with confidence
-        data = pytesseract.image_to_data(
-            image, lang=language, output_type=pytesseract.Output.DICT
-        )
+        try:
+            # Get OCR data with confidence
+            data = pytesseract.image_to_data(
+                image, lang=language, output_type=pytesseract.Output.DICT
+            )
+        except Exception as lang_exc:
+            # Handle missing language pack gracefully
+            error_msg = str(lang_exc)
+            if "data file" in error_msg.lower() or "tessdata" in error_msg.lower():
+                raise RuntimeError(
+                    f"OCR language pack '{language}' is not installed. "
+                    f"The default Docker container only includes English ('eng'). "
+                    f"To use '{language}', install the language pack: "
+                    f"apt-get install tesseract-ocr-{language[:3]}"
+                ) from lang_exc
+            raise
         
         # Calculate average confidence
         confidences = [c for c in data["conf"] if c > 0]

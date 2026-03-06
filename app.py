@@ -562,13 +562,20 @@ with st.sidebar:
         help="Upload PDF files to add to the search index",
     )
 
+    # Initialize session state for tracking processed files
+    if "processed_files" not in st.session_state:
+        st.session_state.processed_files = set()
+
     if uploaded_files:
-        if st.button("Process Uploaded PDFs", use_container_width=True):
+        # Filter to only new files that haven't been processed yet
+        new_files = [f for f in uploaded_files if f.name not in st.session_state.processed_files]
+        
+        if new_files and st.button("Process Uploaded PDFs", use_container_width=True):
             with st.spinner("Processing PDFs ..."):
                 temp_dir = tempfile.mkdtemp()
                 saved_paths = []
 
-                for uploaded_file in uploaded_files:
+                for uploaded_file in new_files:
                     save_path = Path(temp_dir) / uploaded_file.name
                     with open(save_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
@@ -586,21 +593,24 @@ with st.sidebar:
                     )
                     
                     if chunks:
-                        # Cache results in session state to avoid re-processing on UI re-runs
-                        if "processed_chunks" not in st.session_state:
-                            st.session_state.processed_chunks = []
-                        st.session_state.processed_chunks.extend(chunks)
-                        
                         # Add to vector store and persist
                         store = get_vector_store()
                         added = store.add_chunks(chunks)
                         store.save()
-                        st.success(f"Added {added} chunks from {len(uploaded_files)} PDF(s)")
+                        
+                        # Track processed files to prevent re-processing
+                        for f in new_files:
+                            st.session_state.processed_files.add(f.name)
+                        
+                        st.success(f"Added {added} chunks from {len(new_files)} PDF(s)")
                     else:
                         st.warning("No text could be extracted from uploaded PDFs.")
                         
                 except Exception as e:
                     st.error(f"Failed to process PDFs: {e}")
+        
+        elif not new_files:
+            st.info(f"All {len(uploaded_files)} uploaded file(s) have already been processed.")
 
     st.divider()
 
