@@ -24,13 +24,15 @@ ENV SOURCESLEUTH_LOG_LEVEL=INFO
 
 WORKDIR /app
 
-# Install system dependencies required by FAISS and PyMuPDF
+# Install system dependencies required by FAISS, PyMuPDF, and OCR
 # Using slim image + build-essential keeps final size reasonable
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libfreetype6-dev \
     libjpeg-dev \
     zlib1g-dev \
+    tesseract-ocr \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 

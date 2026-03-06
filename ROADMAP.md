@@ -11,7 +11,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 ### Core Features
 - [x] MCP server with stdio transport
 - [x] `find_orphaned_quote` tool — semantic search for orphaned quotes
-- [x] `ingest_pdfs` tool — batch PDF ingestion
+- [x] `ingest_pdfs` tool — batch PDF ingestion (with OCR support for scanned PDFs)
 - [x] `ingest_arxiv` tool — arXiv abstract ingestion
 - [x] `get_store_stats` tool — vector store statistics
 - [x] `sourcesleuth://pdfs/{filename}` resource — read full PDF text
@@ -24,12 +24,16 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 - [x] SentenceTransformers (`all-MiniLM-L6-v2`) for embeddings
 - [x] Local persistence of vector store
 - [x] Environment-based configuration
+- [x] OCR support with Tesseract for scanned documents
+- [x] Hybrid search (FAISS + BM25 + RRF fusion)
+- [x] POS-tagged query expansion with WordNet
 
 ### Documentation
 - [x] README.md with installation and usage guide
 - [x] AI/ML track documentation (models, datasets, evaluation)
 - [x] Configuration documentation
 - [x] Contributing guidelines
+- [x] Docker deployment documentation
 
 ---
 
@@ -38,7 +42,9 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 **Status:** Planned
 
 ### Features
-- [ ] **OCR Integration** — Tesseract OCR for scanned documents
+- [ ] **GraphRAG Integration** — Build citation graphs between indexed papers
+- [ ] **Multi-modal Understanding** — Extract and index figures, charts, and tables
+- [ ] **Automatic Citation Generation** — Generate BibTeX/EndNote from recovered sources
 - [ ] **Table Extraction** — Preserve table structure during parsing
 - [ ] **Figure Caption Recovery** — Extract and index figure captions
 - [ ] **Multi-language Support** — Embeddings for non-English papers
@@ -47,6 +53,7 @@ This document outlines the development roadmap for SourceSleuth, from initial re
 - [ ] Configurable chunk size via `.env`
 - [ ] Progress bars for CLI ingestion
 - [ ] Batch query support for `find_orphaned_quote`
+- [ ] Cross-encoder re-ranking for improved accuracy
 
 ---
 
