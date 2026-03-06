@@ -26,7 +26,22 @@ This is caused by missing Visual C++ Redistributables on Windows. PyTorch requir
    streamlit run app.py
    ```
 
-### Solution 2: Use Conda/Miniconda (Alternative)
+### Solution 2: Reinstall PyTorch CPU Version
+
+If you've already installed the redistributables but still see the error:
+
+```bash
+# Uninstall torch
+pip uninstall torch -y
+
+# Reinstall with CPU-only flag and no cache
+pip install torch --index-url https://download.pytorch.org/whl/cpu --force-reinstall --no-cache-dir
+
+# Test the installation
+python -c "import torch; print(f'PyTorch {torch.__version__} loaded successfully')"
+```
+
+### Solution 3: Use Conda/Miniconda (Alternative)
 
 If the above doesn't work, use Conda which handles dependencies better:
 
