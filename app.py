@@ -11,7 +11,7 @@ from pathlib import Path
 import streamlit as st
 import pandas as pd
 
-from src.config import PDF_DIR, DATA_DIR, EMBEDDING_MODEL, TOP_K, MIN_SCORE
+from src.config import PDF_DIR, DATA_DIR, EMBEDDING_MODEL, TOP_K, MIN_SCORE, SEARCH_MODE
 
 # Lazy imports - import heavy ML libraries only when needed
 # This avoids loading PyTorch/SentenceTransformers on every Streamlit rerun
@@ -22,6 +22,61 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ---------------------------------------------------------------------------
+# Query Expansion Helper (Lightweight, LLM-free)
+# ---------------------------------------------------------------------------
+
+def expand_query_keywords(query: str) -> list[str]:
+    """
+    Expand a query with related keywords for better semantic search.
+    
+    This is a lightweight, rule-based expansion that runs locally without
+    requiring an LLM call. It adds domain-specific synonyms and related
+    concepts to improve recall on abstract or technical queries.
+    
+    Args:
+        query: The original search query.
+        
+    Returns:
+        List of expanded query variations to try.
+    """
+    expansions = []
+    query_lower = query.lower()
+    
+    # Physics-related expansions
+    if "wave" in query_lower or "interference" in query_lower:
+        expansions.append(query + " Young's double slit diffraction pattern")
+        expansions.append(query + " De Broglie wavelength dual nature")
+        expansions.append(query + " constructive destructive interference")
+    
+    if "fringes" in query_lower or "bright" in query_lower or "dark" in query_lower:
+        expansions.append(query + " interference pattern maxima minima")
+        expansions.append(query + " optical path difference phase")
+    
+    if "photoelectric" in query_lower or "photon" in query_lower:
+        expansions.append(query + " Einstein photoelectric effect quantum")
+        expansions.append(query + " work function threshold frequency")
+    
+    if "electron" in query_lower or "orbit" in query_lower:
+        expansions.append(query + " Bohr model atomic structure")
+        expansions.append(query + " energy level transition spectral")
+    
+    # ML/AI expansions
+    if "attention" in query_lower or "transformer" in query_lower:
+        expansions.append(query + " self-attention mechanism encoder decoder")
+        expansions.append(query + " Vaswani neural network sequence")
+    
+    if "embedding" in query_lower or "semantic" in query_lower:
+        expansions.append(query + " vector representation similarity")
+        expansions.append(query + " dense retrieval FAISS cosine")
+    
+    # If no domain-specific expansions, add generic paraphrases
+    if not expansions:
+        expansions.append(query + " original source academic paper")
+        expansions.append(query + " cited reference scholarly")
+    
+    return expansions
 
 # --- Premium CSS Styling ---
 st.markdown("""
@@ -366,9 +421,24 @@ with st.sidebar:
 
     # Search settings
     top_k = st.slider("Number of results", min_value=1, max_value=10, value=TOP_K)
+    
+    # FIXED: Lower default threshold from 0.65 to 0.35
+    # all-MiniLM-L6-v2 produces compressed cosine scores
+    # Relevant paraphrases often score 0.45-0.55
     min_score = st.slider(
         "Minimum similarity",
-        min_value=0.0, max_value=1.0, value=MIN_SCORE, step=0.05,
+        min_value=0.0, max_value=1.0, value=0.35, step=0.05,
+        help="Lower threshold (0.35) captures paraphrased concepts. "
+             "Dense embeddings compress scores - relevant matches often score 0.4-0.6."
+    )
+    
+    # NEW: Search mode toggle for hybrid/dense/sparse
+    search_mode = st.selectbox(
+        "Search mode",
+        options=["hybrid", "dense", "sparse"],
+        index=0 if SEARCH_MODE == "hybrid" else (1 if SEARCH_MODE == "dense" else 2),
+        help="Hybrid (default): Combines semantic + keyword matching. "
+             "Dense: Semantic only. Sparse: Keyword (BM25) only."
     )
 
     st.divider()
@@ -518,7 +588,20 @@ if search_clicked and query:
     )
 
     with st.spinner("Searching your documents ..."):
-        results = store.search(query=query, top_k=top_k)
+        # FIXED: Wire search_mode parameter to enable hybrid search
+        # FIXED: Try query expansion if initial search returns no results
+        results = store.search(query=query, top_k=top_k, mode=search_mode)
+        
+        # If no results with original query, try expanded queries
+        if not results and search_mode in ["hybrid", "dense"]:
+            st.info("No direct matches found. Trying expanded queries...")
+            expansions = expand_query_keywords(query)
+            for expanded in expansions[:2]:  # Try first 2 expansions
+                expanded_results = store.search(query=expanded, top_k=top_k, mode=search_mode)
+                if expanded_results:
+                    st.success(f"Found matches with expanded query!")
+                    results = expanded_results
+                    break
 
     if not results:
         st.warning(

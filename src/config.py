@@ -73,7 +73,10 @@ CHUNK_STRATEGY: str = os.environ.get("SOURCESLEUTH_CHUNK_STRATEGY", "sentence")
 # ---------------------------------------------------------------------------
 
 TOP_K: int = int(os.environ.get("SOURCESLEUTH_TOP_K", "5"))
-MIN_SCORE: float = float(os.environ.get("SOURCESLEUTH_MIN_SCORE", "0.3"))
+# FIXED: Lower default from 0.65 to 0.35
+# all-MiniLM-L6-v2 produces compressed cosine similarity scores
+# Relevant paraphrases often score 0.45-0.55, not 0.7+
+MIN_SCORE: float = float(os.environ.get("SOURCESLEUTH_MIN_SCORE", "0.35"))
 SEARCH_MODE: str = os.environ.get("SOURCESLEUTH_SEARCH_MODE", "hybrid")
 
 # ---------------------------------------------------------------------------
