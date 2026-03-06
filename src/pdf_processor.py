@@ -448,6 +448,7 @@ def process_pdf_directory(
     chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
     strategy: str = "sentence",
     use_ocr: bool = False,
+    ocr_language: str = "eng",
 ) -> list[TextChunk]:
     """
     Process all PDFs in a directory and return a flat list of chunks.
@@ -460,6 +461,8 @@ def process_pdf_directory(
                   default) or 'fixed' (sliding character window).
         use_ocr: If True, use OCR for scanned PDFs. If False, skip
                  OCR and only process text-based PDFs.
+        ocr_language: Tesseract OCR language code (default: "eng").
+                      Only used if use_ocr=True.
 
     Returns:
         Flat list of TextChunk objects from all PDFs in the directory.
@@ -483,13 +486,15 @@ def process_pdf_directory(
             # If no text extracted and OCR is enabled, try OCR
             if not document.full_text.strip() and use_ocr:
                 logger.info(
-                    "No text found in '%s', attempting OCR...",
-                    pdf_path.name,
+                    "No text found in '%s', attempting OCR (language: %s)...",
+                    pdf_path.name, ocr_language,
                 )
                 try:
                     from src.ocr_processor import process_pdf_with_ocr_fallback
                     
-                    ocr_text, used_ocr = process_pdf_with_ocr_fallback(pdf_path)
+                    ocr_text, used_ocr = process_pdf_with_ocr_fallback(
+                        pdf_path, language=ocr_language
+                    )
                     if used_ocr:
                         logger.info(
                             "OCR successful for '%s': %d chars extracted",
@@ -516,14 +521,14 @@ def process_pdf_directory(
             
             all_chunks.extend(chunks)
             logger.info(
-                "Processed '%s' -> %d chunks (strategy=%s, ocr=%s)",
-                pdf_path.name, len(chunks), strategy, use_ocr,
+                "Processed '%s' -> %d chunks (strategy=%s, ocr=%s, lang=%s)",
+                pdf_path.name, len(chunks), strategy, use_ocr, ocr_language,
             )
         except Exception as exc:
             logger.error("Failed to process '%s': %s", pdf_path.name, exc)
 
     logger.info(
-        "Total: processed %d PDFs -> %d chunks from '%s' (strategy=%s, ocr=%s).",
-        len(pdf_files), len(all_chunks), directory, strategy, use_ocr,
+        "Total: processed %d PDFs -> %d chunks from '%s' (strategy=%s, ocr=%s, lang=%s).",
+        len(pdf_files), len(all_chunks), directory, strategy, use_ocr, ocr_language,
     )
     return all_chunks

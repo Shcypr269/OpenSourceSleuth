@@ -26,6 +26,12 @@ WORKDIR /app
 
 # Install system dependencies required by FAISS, PyMuPDF, and OCR
 # Using slim image + build-essential keeps final size reasonable
+# 
+# OCR Language Support:
+#   Default: English only (tesseract-ocr package includes eng training data)
+#   To add languages, append: tesseract-ocr-fra tesseract-ocr-deu tesseract-ocr-spa
+#   Example: RUN apt-get install -y ... tesseract-ocr tesseract-ocr-fra tesseract-ocr-deu
+#
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libfreetype6-dev \

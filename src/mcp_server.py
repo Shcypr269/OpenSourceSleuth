@@ -172,7 +172,11 @@ def find_orphaned_quote(
 
 
 @mcp.tool()
-def ingest_pdfs(directory: str = "", enable_ocr: bool = False) -> str:
+def ingest_pdfs(
+    directory: str = "",
+    enable_ocr: bool = False,
+    ocr_language: str = "eng",
+) -> str:
     """
     Ingest all PDF files from a directory into the local vector store.
 
@@ -190,6 +194,18 @@ def ingest_pdfs(directory: str = "", enable_ocr: bool = False) -> str:
         enable_ocr: If True, use OCR for scanned PDFs that have no extractable
                     text. Requires tesseract-ocr to be installed on the system.
                     Install with: pip install sourcesleuth[ocr]
+        ocr_language: Tesseract OCR language code (default: "eng" for English).
+                      Use "eng+fra" for English+French, "eng+deu" for English+German.
+                      
+                      IMPORTANT: The default Docker container only includes English
+                      ("eng") training data. To use other languages, you must:
+                      1. Install additional language packs on your system, OR
+                      2. Rebuild the Docker container with additional tesseract-ocr-*
+                         packages (e.g., tesseract-ocr-fra, tesseract-ocr-deu)
+                      
+                      Supported language codes: eng (English), fra (French), 
+                      deu (German), spa (Spanish), ita (Italian), por (Portuguese),
+                      rus (Russian), chi_sim (Simplified Chinese), jpn (Japanese)
 
     Returns:
         A summary of how many PDFs and chunks were processed.
@@ -203,8 +219,8 @@ def ingest_pdfs(directory: str = "", enable_ocr: bool = False) -> str:
     if not pdf_files:
         return f"No PDF files found in `{target_dir}`."
 
-    # Process all PDFs
-    chunks = process_pdf_directory(target_dir, use_ocr=enable_ocr)
+    # Process all PDFs with OCR if enabled
+    chunks = process_pdf_directory(target_dir, use_ocr=enable_ocr, ocr_language=ocr_language)
     if not chunks:
         return "PDFs were found but no text could be extracted."
 
@@ -214,7 +230,9 @@ def ingest_pdfs(directory: str = "", enable_ocr: bool = False) -> str:
 
     files_set = {c.filename for c in chunks}
 
-    ocr_note = " (with OCR for scanned PDFs)" if enable_ocr else ""
+    ocr_note = ""
+    if enable_ocr:
+        ocr_note = f" (with OCR, language: {ocr_language})"
     
     return (
         f"**Ingestion complete!**{ocr_note}\n\n"

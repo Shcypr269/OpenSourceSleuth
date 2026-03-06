@@ -260,7 +260,8 @@ def process_pdf_with_ocr_fallback(
     
     Args:
         pdf_path: Path to the PDF file.
-        language: OCR language code (used only if OCR is needed).
+        language: OCR language code (default: "eng").
+                  Used only if OCR is needed.
         dpi: Resolution for OCR (used only if OCR is needed).
         
     Returns:
@@ -305,7 +306,7 @@ def process_pdf_with_ocr_fallback(
             "Install OCR dependencies: pip install sourcesleuth[ocr]"
         )
     
-    logger.info("Falling back to OCR for %s", pdf_path.name)
+    logger.info("Falling back to OCR for %s (language: %s)", pdf_path.name, language)
     ocr_results = ocr_pdf(pdf_path, language=language, dpi=dpi)
     combined_text = "".join(result.text for result in ocr_results)
     
