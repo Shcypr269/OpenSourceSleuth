@@ -12,8 +12,9 @@ import streamlit as st
 import pandas as pd
 
 from src.config import PDF_DIR, DATA_DIR, EMBEDDING_MODEL, TOP_K, MIN_SCORE
-from src.vector_store import VectorStore
-from src.pdf_processor import process_pdf_directory, extract_text_from_pdf
+
+# Lazy imports - import heavy ML libraries only when needed
+# This avoids loading PyTorch/SentenceTransformers on every Streamlit rerun
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -338,6 +339,9 @@ st.markdown("""
 @st.cache_resource
 def get_vector_store():
     """Load or initialize the vector store."""
+    # Lazy import to avoid loading PyTorch on every Streamlit rerun
+    from src.vector_store import VectorStore
+    
     store = VectorStore(model_name=EMBEDDING_MODEL, data_dir=DATA_DIR)
     store.load()
     return store
@@ -393,8 +397,10 @@ with st.sidebar:
                 chunks = []
                 for pdf_path in saved_paths:
                     try:
+                        # Lazy import to avoid loading PyMuPDF unnecessarily
+                        from src.pdf_processor import chunk_text, extract_text_from_pdf
+                        
                         doc = extract_text_from_pdf(pdf_path)
-                        from src.pdf_processor import chunk_text
                         doc_chunks = chunk_text(doc)
                         chunks.extend(doc_chunks)
                     except Exception as e:
