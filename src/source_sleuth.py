@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002  # Mathematical notation requires special Unicode chars
 """
 SourceSleuth Core — Standalone Semantic Search Engine.
 

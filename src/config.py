@@ -95,7 +95,7 @@ _ensure_nltk_data()
 
 try:
     from dotenv import load_dotenv
-except ImportError:  # pragma: no cover – graceful fallback
+except ImportError:  # pragma: no cover - graceful fallback
     load_dotenv = None  # type: ignore[assignment]
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

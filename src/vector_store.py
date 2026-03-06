@@ -41,6 +41,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
+from src.config import EMBEDDING_MODEL as DEFAULT_MODEL_NAME
 from src.pdf_processor import TextChunk
 
 
@@ -56,10 +57,6 @@ except ImportError:
 logger = logging.getLogger("sourcesleuth.vector_store")
 
 # Configuration
-
-# Model is configurable via .env file (loaded in src.config)
-from src.config import EMBEDDING_MODEL as DEFAULT_MODEL_NAME
-
 
 # Known embedding dimensions for common models (fallback: auto-detect)
 _KNOWN_DIMS = {
@@ -363,7 +360,9 @@ class VectorStore:
         scores, indices = self._index.search(query_embedding, fetch_k)
 
         dense_ranking = [
-            (int(idx), float(score)) for score, idx in zip(scores[0], indices[0], strict=False) if idx >= 0
+            (int(idx), float(score))
+            for score, idx in zip(scores[0], indices[0], strict=False)
+            if idx >= 0
         ]
 
         if mode == "dense" or not self._bm25.is_available:

@@ -150,7 +150,7 @@ def cmd_ingest_arxiv(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_stats(args: argparse.Namespace) -> int:
+def cmd_stats(args: argparse.Namespace) -> int:  # noqa: ARG001
     """Display vector store statistics."""
     store = VectorStore(model_name=EMBEDDING_MODEL, data_dir=DATA_DIR)
 
@@ -176,7 +176,7 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_clear(args: argparse.Namespace) -> int:
+def cmd_clear(args: argparse.Namespace) -> int:  # noqa: ARG001
     """Clear the vector store."""
     store = VectorStore(model_name=EMBEDDING_MODEL, data_dir=DATA_DIR)
 

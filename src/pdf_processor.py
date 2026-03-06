@@ -17,7 +17,7 @@ DEFAULT_CHUNK_OVERLAP = 50  # tokens overlap between consecutive chunks
 APPROX_CHARS_PER_TOKEN = 4  # rough estimate for English text
 
 # Sentence-window chunking defaults
-DEFAULT_SENTENCES_PER_WINDOW = 4  # group 3–5 sentences per chunk
+DEFAULT_SENTENCES_PER_WINDOW = 4  # group 3-5 sentences per chunk
 DEFAULT_SENTENCE_OVERLAP = 1  # 1-sentence overlap between windows
 
 # Regex-based sentence splitter

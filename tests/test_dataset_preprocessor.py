@@ -29,7 +29,11 @@ SAMPLE_RECORDS = [
         "report-no": None,
         "categories": "cs.CL cs.AI",
         "license": None,
-        "abstract": "  We propose a novel architecture based on \\textbf{attention mechanisms}.\n  The $\\alpha$-transformer achieves state-of-the-art results on\n  machine translation benchmarks without recurrence or convolution.\n",
+        "abstract": (
+            "  We propose a novel architecture based on \\textbf{attention mechanisms}.\n"
+            "  The $\\alpha$-transformer achieves state-of-the-art results on\n"
+            "  machine translation benchmarks without recurrence or convolution.\n"
+        ),
         "versions": [{"version": "v1", "created": "Tue, 3 Jan 2023 00:00:00 GMT"}],
         "update_date": "2023-01-15",
         "authors_parsed": [["Doe", "Jane", ""], ["Smith", "John", ""]],
@@ -45,7 +49,10 @@ SAMPLE_RECORDS = [
         "report-no": None,
         "categories": "cs.RO cs.LG",
         "license": None,
-        "abstract": "  We apply deep RL techniques to robotic manipulation tasks.\n  Our method improves sample efficiency by 50%.\n",
+        "abstract": (
+            "  We apply deep RL techniques to robotic manipulation tasks.\n"
+            "  Our method improves sample efficiency by 50%.\n"
+        ),
         "versions": [{"version": "v1", "created": "Wed, 4 Jan 2023 00:00:00 GMT"}],
         "update_date": "2023-02-20",
         "authors_parsed": [["Bob", "Alice", ""]],
