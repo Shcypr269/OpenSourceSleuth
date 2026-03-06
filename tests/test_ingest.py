@@ -88,24 +88,27 @@ class TestCLIMain:
 
     def test_main_stats_command(self, tmp_path):
         """Test running the stats subcommand."""
-        with patch("src.ingest.DATA_DIR", tmp_path), patch.object(
-            sys, "argv", ["sourcesleuth-ingest", "stats"]
+        with (
+            patch("src.ingest.DATA_DIR", tmp_path),
+            patch.object(sys, "argv", ["sourcesleuth-ingest", "stats"]),
         ):
             result = main()
             assert result == 0
 
     def test_main_clear_command(self, tmp_path):
         """Test running the clear subcommand."""
-        with patch("src.ingest.DATA_DIR", tmp_path), patch.object(
-            sys, "argv", ["sourcesleuth-ingest", "clear"]
+        with (
+            patch("src.ingest.DATA_DIR", tmp_path),
+            patch.object(sys, "argv", ["sourcesleuth-ingest", "clear"]),
         ):
             result = main()
             assert result == 0
 
     def test_main_arxiv_command_missing_data(self, tmp_path):
         """Test arxiv command when data file is missing."""
-        with patch("src.ingest.DATA_DIR", tmp_path), patch.object(
-            sys, "argv", ["sourcesleuth-ingest", "arxiv"]
+        with (
+            patch("src.ingest.DATA_DIR", tmp_path),
+            patch.object(sys, "argv", ["sourcesleuth-ingest", "arxiv"]),
         ):
             result = main()
             # Should return 1 because arXiv data file doesn't exist
